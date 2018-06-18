@@ -51,14 +51,14 @@ namespace WinMLTester.Views
 
             StorageFile selectedStorageFile = await fileOpenPicker.PickSingleFileAsync();
 
-            //TemporaryFix
-            StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
-            StorageFile sf2=await selectedStorageFile.CopyAsync(storageFolder, selectedStorageFile.Name, NameCollisionOption.ReplaceExisting);
+            ////TemporaryFix
+            //StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+            //StorageFile sf2=await selectedStorageFile.CopyAsync(storageFolder, selectedStorageFile.Name, NameCollisionOption.ReplaceExisting);
             // Load the model
             //StorageFile modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri($"ms-appx:///CustomVision.onnx"));
             try
             {
-                _model = await CustomVisionModel.CreateCustomVisionModel(sf2);
+                _model = await CustomVisionModel.CreateCustomVisionModel(selectedStorageFile);
             }catch(Exception ex)
             {
 
