@@ -9,22 +9,41 @@
     mc:Ignorable="d">
     <Grid x:Name="ContentArea" Margin="{StaticResource MediumLeftRightMargin}">
         <Grid Background="{ThemeResource SystemControlPageBackgroundChromeLowBrush}">
-            <StackPanel>
-                <controls:CameraPreview
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"></ColumnDefinition>
+                <ColumnDefinition Width="300"></ColumnDefinition>
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"></RowDefinition>
+                    <RowDefinition Height="*"></RowDefinition>
+                </Grid.RowDefinitions>
+                <StackPanel Orientation="Horizontal">
+                    <Button Click="Button_Click">Foto</Button>
+                    <Button Click="Button_Click_1">Video</Button>
+                    <Button Click="ButtonBase_OnClick">Camera</Button>
+                </StackPanel>
+                <controls:CameraPreview Grid.Row="1"
                     x:Name="CameraPreviewControl"
-                    Height="200"
+                    
                     IsFrameSourceGroupButtonVisible="True" />
-                <Image
+                <Image Grid.Row="1"
                     x:Name="ImagePreview"
-                    Width="200"
-                    Height="200" />
-                <Button Click="Button_Click">Esegui</Button>
-                <Button Click="Button_Click_1">Video</Button>
-            </StackPanel>
-            <!--
-                The SystemControlPageBackgroundChromeLowBrush background represents where you should place your content.
-                Place your content here.
-            -->
+                   />
+                
+                
+            </Grid>
+            <ListView Grid.Column="1" x:Name="ListViewResults" ItemsSource="{Binding}">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                    <StackPanel>
+                        <Image Source="{Binding Image}"></Image>
+                        
+                        <TextBlock Text="{Binding Info}"></TextBlock>
+                    </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
         </Grid>
     </Grid>
 </Page>

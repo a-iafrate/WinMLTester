@@ -23,7 +23,7 @@ namespace WinMLTester
             this.classLabel = new List<string>();
             this.loss = new Dictionary<string, float>()
             {
-                { "casa", float.NaN },
+                { "Unkown", float.NaN },
             };
         }
     }

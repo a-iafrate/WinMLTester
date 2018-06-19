@@ -2,6 +2,7 @@
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Toolkit.Uwp.Helpers;
 using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
@@ -16,8 +17,10 @@ using Windows.Media.Playback;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
+using WinMLTester.Models;
 
 namespace WinMLTester.Views
 {
@@ -25,10 +28,12 @@ namespace WinMLTester.Views
     {
         private CustomVisionModel _model;
         private MediaPlayer mediaPlayer;
+
+        private ObservableCollection<ResultModel> resultsList=new ObservableCollection<ResultModel>();
         public MainPage()
         {
             InitializeComponent();
-
+            ListViewResults.ItemsSource = resultsList;
             //initModel();
             //initCamera();
 
@@ -36,9 +41,22 @@ namespace WinMLTester.Views
 
         private async void initCamera()
         {
+            if (_model == null)
+            {
+                await initModel();
+            }
+            resultsList.Clear();
+            CameraPreviewControl.Visibility = Visibility.Visible;
+            ImagePreview.Visibility = Visibility.Collapsed;
+            StopAll();
             await CameraPreviewControl.StartAsync();
             CameraPreviewControl.CameraHelper.FrameArrived += CameraPreviewControl_FrameArrived;
             
+        }
+
+        private void StopAll()
+        {
+
         }
 
         public async Task initModel()
@@ -51,14 +69,14 @@ namespace WinMLTester.Views
 
             StorageFile selectedStorageFile = await fileOpenPicker.PickSingleFileAsync();
 
-            ////TemporaryFix
-            //StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
-            //StorageFile sf2=await selectedStorageFile.CopyAsync(storageFolder, selectedStorageFile.Name, NameCollisionOption.ReplaceExisting);
+            //TemporaryFix for debug
+            StorageFolder storageFolder = ApplicationData.Current.LocalFolder;
+            StorageFile sf2 = await selectedStorageFile.CopyAsync(storageFolder, selectedStorageFile.Name, NameCollisionOption.ReplaceExisting);
             // Load the model
             //StorageFile modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri($"ms-appx:///CustomVision.onnx"));
             try
             {
-                _model = await CustomVisionModel.CreateCustomVisionModel(selectedStorageFile);
+                _model = await CustomVisionModel.CreateCustomVisionModel(sf2);
             }catch(Exception ex)
             {
 
@@ -86,6 +104,10 @@ namespace WinMLTester.Views
             {
                 await initModel();
             }
+            resultsList.Clear();
+            CameraPreviewControl.Visibility = Visibility.Collapsed;
+            ImagePreview.Visibility = Visibility.Visible;
+            StopAll();
             //ButtonRun.IsEnabled = false;
 
             //UIPreviewImage.Source = null;
@@ -152,7 +174,7 @@ namespace WinMLTester.Views
 
                 await imageSource.SetBitmapAsync(softwareBitmap);
 
-                //UIPreviewImage.Source = imageSource;
+                ImagePreview.Source = imageSource;
 
 
 
@@ -216,6 +238,7 @@ namespace WinMLTester.Views
         private async Task EvaluateVideoFrameAsync(VideoFrame frame)
 
         {
+            
 
             if (frame != null)
 
@@ -224,7 +247,7 @@ namespace WinMLTester.Views
                 try
 
                 {
-
+                    
                     //_stopwatch.Restart();
 
                     CustomVisionModelInput inputData = new CustomVisionModelInput();
@@ -233,21 +256,37 @@ namespace WinMLTester.Views
 
                     var results = await _model.EvaluateAsync(inputData);
 
-                    var loss = results.loss.ToList().OrderBy(x => -(x.Value));
+                    var loss = results.loss.Where(x=>x.Value>0.8).ToList();
 
-                    var labels = results.classLabel;
+                    if (loss.Count > 0)
+                    {
 
-                    //_stopwatch.Stop();
+                        var labels = results.classLabel;
 
+                        //_stopwatch.Stop();
 
+                        await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
+                            () => {
+                                //Get current image
+                                Image m = new Image();
+                        var source = new SoftwareBitmapSource();
+                        source.SetBitmapAsync(frame.SoftwareBitmap);
+                        //m.Source = source;
 
-                    var lossStr = string.Join(",  ", loss.Select(l => l.Key + " " + (l.Value * 100.0f).ToString("#0.00") + "%"));
+                        var lossStr =
+                            loss.Select(l => new ResultModel()
+                            {
+                               Name = l.Key,
+                                Percent =  l.Value * 100.0f,
+                                Image = source
+                            }).FirstOrDefault();
 
-                    //string message = $"Evaluation took {_stopwatch.ElapsedMilliseconds}ms to execute, Predictions: {lossStr}.";
+                        resultsList.Add(lossStr); });
+                        //string message = $"Evaluation took {_stopwatch.ElapsedMilliseconds}ms to execute, Predictions: {lossStr}.";
 
-                    Debug.WriteLine(lossStr);
-
-                   // await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => StatusBlock.Text = message);
+                        //Debug.WriteLine(lossStr);
+                    }
+                    // await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => StatusBlock.Text = message);
 
                 }
 
@@ -275,6 +314,10 @@ namespace WinMLTester.Views
             {
                 await initModel();
             }
+            resultsList.Clear();
+            CameraPreviewControl.Visibility = Visibility.Collapsed;
+            ImagePreview.Visibility = Visibility.Visible;
+            StopAll();
 
             FileOpenPicker fileOpenPicker = new FileOpenPicker();
 
@@ -324,9 +367,8 @@ namespace WinMLTester.Views
                 frameServerDest = new SoftwareBitmap(BitmapPixelFormat.Bgra8, (int)1200, (int)1200, BitmapAlphaMode.Premultiplied);
                 var canvasImageSource = new CanvasImageSource(canvasDevice, (int)1200, (int)1200, DisplayInformation.GetForCurrentView().LogicalDpi);//96);
 
-                
 
-
+               
                 using (CanvasBitmap inputBitmap = CanvasBitmap.CreateFromSoftwareBitmap(canvasDevice, frameServerDest))
                 using (CanvasDrawingSession ds = canvasImageSource.CreateDrawingSession(Windows.UI.Colors.Transparent))
                 {
@@ -336,7 +378,7 @@ namespace WinMLTester.Views
 
 
 
-                    frameServerDest = SoftwareBitmap.CreateCopyFromSurfaceAsync(inputBitmap).AsTask().Result;
+                    frameServerDest = SoftwareBitmap.CreateCopyFromSurfaceAsync(inputBitmap, BitmapAlphaMode.Premultiplied).AsTask().Result;
                 }
                 ImagePreview.Source = canvasImageSource;
 
@@ -349,6 +391,11 @@ namespace WinMLTester.Views
             // Evaluate the image
 
             await EvaluateVideoFrameAsync(inputImage);
+        }
+
+        private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
+        {
+            initCamera();
         }
     }
 }
