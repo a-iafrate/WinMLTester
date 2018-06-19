@@ -10,37 +10,46 @@
     <Grid x:Name="ContentArea" Margin="{StaticResource MediumLeftRightMargin}">
         <Grid Background="{ThemeResource SystemControlPageBackgroundChromeLowBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"></ColumnDefinition>
-                <ColumnDefinition Width="300"></ColumnDefinition>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="300" />
             </Grid.ColumnDefinitions>
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"></RowDefinition>
-                    <RowDefinition Height="*"></RowDefinition>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal">
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <Button x:Name="ButtonLoadOnnx" Click="ButtonLoadOnnx_Click">Load onnx</Button>
+                </StackPanel>
+                <StackPanel
+                    x:Name="StackButtons"
+                    Grid.Row="1"
+                    Orientation="Horizontal"
+                    Visibility="Collapsed">
                     <Button Click="Button_Click">Foto</Button>
                     <Button Click="Button_Click_1">Video</Button>
                     <Button Click="ButtonBase_OnClick">Camera</Button>
                 </StackPanel>
-                <controls:CameraPreview Grid.Row="1"
+                <controls:CameraPreview
                     x:Name="CameraPreviewControl"
-                    
+                    Grid.Row="2"
                     IsFrameSourceGroupButtonVisible="True" />
-                <Image Grid.Row="1"
-                    x:Name="ImagePreview"
-                   />
-                
-                
+                <Image x:Name="ImagePreview" Grid.Row="2" />
+
+
             </Grid>
-            <ListView Grid.Column="1" x:Name="ListViewResults" ItemsSource="{Binding}">
+            <ListView
+                x:Name="ListViewResults"
+                Grid.Column="1"
+                ItemsSource="{Binding}">
                 <ListView.ItemTemplate>
                     <DataTemplate>
-                    <StackPanel>
-                        <Image Source="{Binding Image}"></Image>
-                        
-                        <TextBlock Text="{Binding Info}"></TextBlock>
-                    </StackPanel>
+                        <StackPanel>
+                            <Image Source="{Binding Image}" />
+
+                            <TextBlock Text="{Binding Info}" />
+                        </StackPanel>
                     </DataTemplate>
                 </ListView.ItemTemplate>
             </ListView>

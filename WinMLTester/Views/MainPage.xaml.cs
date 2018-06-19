@@ -17,6 +17,7 @@ using Windows.Media.Playback;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.Storage.Streams;
+using Windows.UI.Popups;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Media.Imaging;
@@ -62,11 +63,8 @@ namespace WinMLTester.Views
         public async Task initModel()
         {
             FileOpenPicker fileOpenPicker = new FileOpenPicker();
-
             fileOpenPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-
             fileOpenPicker.FileTypeFilter.Add(".onnx");
-
             StorageFile selectedStorageFile = await fileOpenPicker.PickSingleFileAsync();
 
             //TemporaryFix for debug
@@ -77,9 +75,11 @@ namespace WinMLTester.Views
             try
             {
                 _model = await CustomVisionModel.CreateCustomVisionModel(sf2);
+                StackButtons.Visibility = Visibility.Visible;
             }catch(Exception ex)
             {
-
+                StackButtons.Visibility = Visibility.Collapsed;
+                new MessageDialog(ex.StackTrace,ex.Message).ShowAsync();
             }
         }
 
@@ -396,6 +396,11 @@ namespace WinMLTester.Views
         private void ButtonBase_OnClick(object sender, RoutedEventArgs e)
         {
             initCamera();
+        }
+
+        private void ButtonLoadOnnx_Click(object sender, RoutedEventArgs e)
+        {
+            initModel();
         }
     }
 }
