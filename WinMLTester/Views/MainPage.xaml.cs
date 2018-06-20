@@ -16,6 +16,7 @@ using Windows.Media.Core;
 using Windows.Media.Playback;
 using Windows.Storage;
 using Windows.Storage.Pickers;
+using Windows.Storage.Search;
 using Windows.Storage.Streams;
 using Windows.UI.Popups;
 using Windows.UI.Xaml;
@@ -116,102 +117,48 @@ namespace WinMLTester.Views
 
             {
 
-                //if (_model == null)
-
-                //{
-
-                //    // Load the model
-
-                //    await Task.Run(async () => await LoadModelAsync());
-
-                //}
-
-
-
-                // Trigger file picker to select an image file
-
                 FileOpenPicker fileOpenPicker = new FileOpenPicker();
-
                 fileOpenPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-
                 fileOpenPicker.FileTypeFilter.Add(".bmp");
-
                 fileOpenPicker.FileTypeFilter.Add(".jpg");
-
                 fileOpenPicker.FileTypeFilter.Add(".png");
-
                 fileOpenPicker.ViewMode = PickerViewMode.Thumbnail;
-
                 StorageFile selectedStorageFile = await fileOpenPicker.PickSingleFileAsync();
-
-
-
                 SoftwareBitmap softwareBitmap;
-
                 using (IRandomAccessStream stream = await selectedStorageFile.OpenAsync(FileAccessMode.Read))
-
                 {
 
                     // Create the decoder from the stream 
-
                     BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
-
-
-
                     // Get the SoftwareBitmap representation of the file in BGRA8 format
-
                     softwareBitmap = await decoder.GetSoftwareBitmapAsync();
-
                     softwareBitmap = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
-
                 }
-
-
-
                 // Display the image
-
                 SoftwareBitmapSource imageSource = new SoftwareBitmapSource();
-
                 await imageSource.SetBitmapAsync(softwareBitmap);
-
                 ImagePreview.Source = imageSource;
-
-
-
                 // Encapsulate the image in the WinML image type (VideoFrame) to be bound and evaluated
-
                 VideoFrame inputImage = VideoFrame.CreateWithSoftwareBitmap(softwareBitmap);
 
-
-
                 await Task.Run(async () =>
-
-                {
+               {
 
                     // Evaluate the image
-
                     await EvaluateVideoFrameAsync(inputImage);
 
                 });
-
             }
-
             catch (Exception ex)
-
             {
-
                 Debug.WriteLine($"error: {ex.Message}");
-
                // await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => StatusBlock.Text = $"error: {ex.Message}");
-
             }
 
             finally
 
             {
-
                 //ButtonRun.IsEnabled = true;
-
             }
         }
 
@@ -401,6 +348,80 @@ namespace WinMLTester.Views
         private void ButtonLoadOnnx_Click(object sender, RoutedEventArgs e)
         {
             initModel();
+        }
+
+        private async void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            if (_model == null)
+            {
+                await initModel();
+            }
+            resultsList.Clear();
+            CameraPreviewControl.Visibility = Visibility.Collapsed;
+            ImagePreview.Visibility = Visibility.Visible;
+            StopAll();
+            //ButtonRun.IsEnabled = false;
+
+            //UIPreviewImage.Source = null;
+
+            try
+
+            {
+
+                FolderPicker fileOpenPicker = new FolderPicker();
+                fileOpenPicker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+                fileOpenPicker.FileTypeFilter.Add(".bmp");
+                fileOpenPicker.FileTypeFilter.Add(".jpg");
+                fileOpenPicker.FileTypeFilter.Add(".png");
+                fileOpenPicker.ViewMode = PickerViewMode.Thumbnail;
+                StorageFolder selectedStorageFile = await fileOpenPicker.PickSingleFolderAsync();
+                SoftwareBitmap softwareBitmap;
+
+                var options = new QueryOptions();
+                options.FileTypeFilter.Add(".jpg");
+                options.FileTypeFilter.Add(".png");
+                options.FolderDepth = FolderDepth.Deep;
+
+                StorageFileQueryResult query = selectedStorageFile.CreateFileQueryWithOptions(options);
+
+                foreach (StorageFile file in await query.GetFilesAsync())
+                {
+                    using (IRandomAccessStream stream = await file.OpenAsync(FileAccessMode.Read))
+                    {
+
+                        // Create the decoder from the stream 
+                        BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
+                        // Get the SoftwareBitmap representation of the file in BGRA8 format
+                        softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+                        softwareBitmap = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+                    }
+                    // Display the image
+                    SoftwareBitmapSource imageSource = new SoftwareBitmapSource();
+                    await imageSource.SetBitmapAsync(softwareBitmap);
+                    ImagePreview.Source = imageSource;
+                    // Encapsulate the image in the WinML image type (VideoFrame) to be bound and evaluated
+                    VideoFrame inputImage = VideoFrame.CreateWithSoftwareBitmap(softwareBitmap);
+
+                    await Task.Run(async () =>
+                    {
+
+                    // Evaluate the image
+                    await EvaluateVideoFrameAsync(inputImage);
+
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"error: {ex.Message}");
+                // await Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () => StatusBlock.Text = $"error: {ex.Message}");
+            }
+
+            finally
+
+            {
+                //ButtonRun.IsEnabled = true;
+            }
         }
     }
 }

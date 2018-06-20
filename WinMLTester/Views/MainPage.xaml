@@ -27,7 +27,8 @@
                     Grid.Row="1"
                     Orientation="Horizontal"
                     Visibility="Collapsed">
-                    <Button Click="Button_Click">Foto</Button>
+                    <Button Click="Button_Click_2">Folder</Button>
+                    <Button Click="Button_Click">Image</Button>
                     <Button Click="Button_Click_1">Video</Button>
                     <Button Click="ButtonBase_OnClick">Camera</Button>
                 </StackPanel>
