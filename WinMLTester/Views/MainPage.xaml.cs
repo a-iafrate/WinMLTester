@@ -7,8 +7,11 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
+using Windows.AI.MachineLearning;
+using Windows.Foundation;
 using Windows.Graphics.Display;
 using Windows.Graphics.Imaging;
 using Windows.Media;
@@ -75,7 +78,7 @@ namespace WinMLTester.Views
             //StorageFile modelFile = await StorageFile.GetFileFromApplicationUriAsync(new Uri($"ms-appx:///CustomVision.onnx"));
             try
             {
-                _model = await CustomVisionModel.CreateCustomVisionModel(sf2);
+                _model = await CustomVisionModel.CreateFromStorageFile(selectedStorageFile);
                 StackButtons.Visibility = Visibility.Visible;
             }catch(Exception ex)
             {
@@ -132,7 +135,9 @@ namespace WinMLTester.Views
                     BitmapDecoder decoder = await BitmapDecoder.CreateAsync(stream);
                     // Get the SoftwareBitmap representation of the file in BGRA8 format
                     softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+                    
                     softwareBitmap = SoftwareBitmap.Convert(softwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Premultiplied);
+                    
                 }
                 // Display the image
                 SoftwareBitmapSource imageSource = new SoftwareBitmapSource();
@@ -181,6 +186,100 @@ namespace WinMLTester.Views
             }
         }
 
+        public static IAsyncOperation<VideoFrame> CenterCropImageAsync(VideoFrame inputVideoFrame, uint targetWidth, uint targetHeight)
+
+        {
+
+            return AsyncInfo.Run(async (token) =>
+
+            {
+
+                bool useDX = inputVideoFrame.SoftwareBitmap == null;
+
+                VideoFrame result = null;
+
+                // Center crop
+
+                try
+
+                {
+
+
+
+                    // Since we will be center-cropping the image, figure which dimension has to be clipped
+
+                    var frameHeight = useDX ? inputVideoFrame.Direct3DSurface.Description.Height : inputVideoFrame.SoftwareBitmap.PixelHeight;
+
+                    var frameWidth = useDX ? inputVideoFrame.Direct3DSurface.Description.Width : inputVideoFrame.SoftwareBitmap.PixelWidth;
+
+
+
+                  
+
+
+
+                    // Create the VideoFrame to be bound as input for evaluation
+
+                    if (useDX)
+
+                    {
+
+                        if (inputVideoFrame.Direct3DSurface == null)
+
+                        {
+
+                            throw (new Exception("Invalid VideoFrame without SoftwareBitmap nor D3DSurface"));
+
+                        }
+
+
+
+                        result = new VideoFrame(BitmapPixelFormat.Bgra8,
+
+                                                (int)targetWidth,
+
+                                                (int)targetHeight,
+
+                                                BitmapAlphaMode.Premultiplied);
+
+                    }
+
+                    else
+
+                    {
+
+                        result = new VideoFrame(BitmapPixelFormat.Bgra8,
+
+                                                (int)targetWidth,
+
+                                                (int)targetHeight,
+
+                                                BitmapAlphaMode.Premultiplied);
+
+                    }
+
+
+
+                    await inputVideoFrame.CopyToAsync(result);
+
+                }
+
+                catch (Exception ex)
+
+                {
+
+                    Debug.WriteLine(ex.ToString());
+
+                }
+
+
+
+                return result;
+
+            });
+
+        }
+
 
         private async Task EvaluateVideoFrameAsync(VideoFrame frame)
 
@@ -197,38 +296,48 @@ namespace WinMLTester.Views
                     
                     //_stopwatch.Restart();
 
-                    CustomVisionModelInput inputData = new CustomVisionModelInput();
+                    Input inputData = new Input();
 
-                    inputData.data = frame;
 
-                    var results = await _model.EvaluateAsync(inputData);
+                    frame=await CenterCropImageAsync(frame, (uint)_model.inputWidth, (uint)_model.inputHeight);
+                    ImageFeatureValue imageTensor = ImageFeatureValue.CreateFromVideoFrame(frame);
+                    inputData.image = imageTensor;
+                    var results = await _model.Evaluate(inputData);
 
-                    var loss = results.loss.Where(x=>x.Value>0.8).ToList();
-
-                    if (loss.Count > 0)
+                    var result = results.grid.GetAsVectorView().ToList();
+                   var max= result.Max();
+                    int pos = result.IndexOf(max);
+                    //if (loss.Count > 0)
                     {
 
-                        var labels = results.classLabel;
+                        var labels = pos;//results.classLabel;
 
                         //_stopwatch.Stop();
 
                         await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
-                            () => {
+                            () =>
+                            {
                                 //Get current image
                                 Image m = new Image();
-                        var source = new SoftwareBitmapSource();
-                        source.SetBitmapAsync(frame.SoftwareBitmap);
-                        //m.Source = source;
+                                var source = new SoftwareBitmapSource();
+                                source.SetBitmapAsync(frame.SoftwareBitmap);
+                                //m.Source = source;
 
-                        var lossStr =
-                            loss.Select(l => new ResultModel()
-                            {
-                               Name = l.Key,
-                                Percent =  l.Value * 100.0f,
-                                Image = source
-                            }).FirstOrDefault();
+                                var lossStr = new ResultModel()
+                                {
+                                    Name = pos+"",
+                                    Percent = max * 100.0f,
+                                    Image = source
+                                };
+                                    //loss.Select(l => new ResultModel()
+                                    //{
+                                    //    Name = l.Key,
+                                    //    Percent = l.Value * 100.0f,
+                                    //    Image = source
+                                    //}).FirstOrDefault();
 
-                        resultsList.Add(lossStr); });
+                                resultsList.Add(lossStr);
+                            });
                         //string message = $"Evaluation took {_stopwatch.ElapsedMilliseconds}ms to execute, Predictions: {lossStr}.";
 
                         //Debug.WriteLine(lossStr);
